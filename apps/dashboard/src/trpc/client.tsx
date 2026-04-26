@@ -58,9 +58,11 @@ export function TRPCReactProvider(
               data: { session },
             } = await supabase.auth.getSession();
 
-            const headers: Record<string, string> = {
-              Authorization: `Bearer ${session?.access_token}`,
-            };
+            const headers: Record<string, string> = {};
+
+            if (session?.access_token) {
+              headers.Authorization = `Bearer ${session.access_token}`;
+            }
 
             // Pass force-primary cookie as header to API for replication lag handling
             const forcePrimary = getCookie(Cookies.ForcePrimary);

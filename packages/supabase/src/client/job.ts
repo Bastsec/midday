@@ -1,8 +1,19 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import {
+  getSupabaseServiceKey,
+  getSupabaseUrl,
+  isSupabaseConfigured,
+} from "../config";
 import type { Database } from "../types/db";
+import { createUnavailableSupabaseClient } from "./unavailable";
 
-export const createClient = () =>
-  createSupabaseClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL! || process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_KEY!,
+export const createClient = () => {
+  if (!isSupabaseConfigured({ admin: true })) {
+    return createUnavailableSupabaseClient();
+  }
+
+  return createSupabaseClient<Database>(
+    getSupabaseUrl()!,
+    getSupabaseServiceKey()!,
   );
+};

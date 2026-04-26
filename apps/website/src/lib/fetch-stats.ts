@@ -1,45 +1,55 @@
 "use server";
 
-import type { Database } from "@midday/supabase/types";
+import {
+  getSupabaseServiceKey,
+  getSupabaseUrl,
+  isSupabaseConfigured,
+} from "@midday/supabase/config";
 import { createServerClient } from "@supabase/ssr";
 
 export async function fetchStats() {
-  const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_KEY!,
-    {
-      cookies: {
-        get() {
-          return null;
-        },
-        set() {
-          return null;
-        },
-        remove() {
-          return null;
-        },
-      },
-    },
-  );
+  if (!isSupabaseConfigured({ admin: true })) {
+    return {
+      users: 0,
+      transactions: 0,
+      bankAccounts: 0,
+      trackerEntries: 0,
+      inboxItems: 0,
+      bankConnections: 0,
+      trackerProjects: 0,
+      reports: 0,
+      vaultObjects: 0,
+      transactionEnrichments: 0,
+      invoices: 0,
+      invoiceCustomers: 0,
+    };
+  }
 
-  const supabaseStorage = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_KEY!,
-    {
-      cookies: {
-        get() {
-          return null;
-        },
-        set() {
-          return null;
-        },
-        remove() {
-          return null;
-        },
+  const supabaseUrl = getSupabaseUrl()!;
+  const serviceKey = getSupabaseServiceKey()!;
+
+  const supabase = createServerClient<any>(supabaseUrl, serviceKey, {
+    cookies: {
+      getAll() {
+        return [];
       },
-      db: { schema: "storage" },
+      setAll() {
+        return;
+      },
     },
-  );
+  });
+
+  const supabaseStorage = createServerClient<any>(supabaseUrl, serviceKey, {
+    cookies: {
+      getAll() {
+        return [];
+      },
+      setAll() {
+        return;
+      },
+    },
+    db: { schema: "storage" },
+  } as any);
 
   const [
     { count: users },

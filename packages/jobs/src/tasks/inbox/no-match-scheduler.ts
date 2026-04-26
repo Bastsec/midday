@@ -4,6 +4,41 @@ import { logger, schedules } from "@trigger.dev/sdk";
 import { subDays } from "date-fns";
 import { and, eq, lt, sql } from "drizzle-orm";
 
+type DbPreflightRow = {
+  currentDatabase: string;
+  searchPath: string;
+  inboxTable: string | null;
+  hasNoMatchStatus: boolean;
+};
+
+const nonRetryableSchemaErrorCodes = new Set([
+  "22P02", // invalid_text_representation, e.g. enum value missing
+  "42P01", // undefined_table
+  "42703", // undefined_column
+]);
+
+const getRows = <TRow>(result: unknown): TRow[] => {
+  if (Array.isArray(result)) {
+    return result as TRow[];
+  }
+
+  return (result as { rows?: TRow[] }).rows ?? [];
+};
+
+const getDatabaseErrorCode = (error: unknown): string | undefined => {
+  let current = error;
+
+  while (current && typeof current === "object") {
+    const code = (current as { code?: unknown }).code;
+
+    if (typeof code === "string") {
+      return code;
+    }
+
+    current = (current as { cause?: unknown }).cause;
+  }
+};
+
 /**
  * Scheduled task that runs daily to update inbox items to "no_match" status
  * after they have been pending for 90 days without finding a matching transaction.
@@ -23,6 +58,37 @@ export const noMatchScheduler = schedules.task({
     const db = getDb();
 
     try {
+      const [preflight] = getRows<DbPreflightRow>(
+        await db.execute(sql`
+          SELECT
+            current_database() AS "currentDatabase",
+            current_setting('search_path') AS "searchPath",
+            to_regclass('public.inbox')::text AS "inboxTable",
+            EXISTS (
+              SELECT 1
+              FROM pg_type t
+              JOIN pg_enum e ON e.enumtypid = t.oid
+              JOIN pg_namespace n ON n.oid = t.typnamespace
+              WHERE n.nspname = 'public'
+                AND t.typname = 'inbox_status'
+                AND e.enumlabel = 'no_match'
+            ) AS "hasNoMatchStatus"
+        `),
+      );
+
+      if (!preflight?.inboxTable || !preflight.hasNoMatchStatus) {
+        logger.error("No-match scheduler database preflight failed", {
+          currentDatabase: preflight?.currentDatabase,
+          searchPath: preflight?.searchPath,
+          inboxTable: preflight?.inboxTable,
+          hasNoMatchStatus: preflight?.hasNoMatchStatus,
+          expectedTable: "public.inbox",
+          expectedEnumValue: "public.inbox_status.no_match",
+        });
+
+        return;
+      }
+
       // Calculate the date 90 days ago using date-fns
       const ninetyDaysAgo = subDays(new Date(), 90);
 
@@ -83,6 +149,22 @@ export const noMatchScheduler = schedules.task({
         });
       }
     } catch (error) {
+      const code = getDatabaseErrorCode(error);
+
+      if (code && nonRetryableSchemaErrorCodes.has(code)) {
+        logger.error(
+          "Skipping no-match scheduler because schema is not ready",
+          {
+            code,
+            error: error instanceof Error ? error.message : "Unknown error",
+            expectedTable: "public.inbox",
+            expectedEnumValue: "public.inbox_status.no_match",
+          },
+        );
+
+        return;
+      }
+
       logger.error("Failed to run no-match scheduler", {
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,

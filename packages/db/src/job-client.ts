@@ -21,6 +21,7 @@ export const createJobDb = () => {
     connectionTimeoutMillis: 15000, // Match main client config
     maxUses: 0, // No limit on connection reuse for jobs
     allowExitOnIdle: true,
+    options: "-c search_path=public,extensions",
   });
 
   const db = drizzle(jobPool, {

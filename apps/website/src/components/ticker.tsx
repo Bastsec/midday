@@ -1,42 +1,53 @@
-import type { Database } from "@midday/supabase/types";
+import {
+  getSupabaseServiceKey,
+  getSupabaseUrl,
+  isSupabaseConfigured,
+} from "@midday/supabase/config";
 import { createServerClient } from "@supabase/ssr";
 import Link from "next/link";
 
 const currency = "USD";
 
 export async function Ticker() {
-  const client = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_KEY!,
-    {
-      cookies: {
-        get() {
-          return null;
-        },
-        set() {
-          return null;
-        },
-        remove() {
-          return null;
+  let totalSum = 0;
+  let businessCount = 0;
+  let transactionCount = 0;
+
+  if (isSupabaseConfigured({ admin: true })) {
+    const client = createServerClient<any>(
+      getSupabaseUrl()!,
+      getSupabaseServiceKey()!,
+      {
+        cookies: {
+          getAll() {
+            return [];
+          },
+          setAll() {
+            return;
+          },
         },
       },
-    },
-  );
+    );
 
-  const [
-    { data: totalSum },
-    { count: businessCount },
-    { count: transactionCount },
-  ] = await Promise.all([
-    client.rpc("calculate_total_sum", {
-      target_currency: currency,
-    }),
-    client.from("teams").select("id", { count: "exact", head: true }).limit(1),
-    client
-      .from("transactions")
-      .select("id", { count: "exact", head: true })
-      .limit(1),
-  ]);
+    const [totalSumResult, businessCountResult, transactionCountResult] =
+      await Promise.all([
+        client.rpc("calculate_total_sum", {
+          target_currency: currency,
+        }),
+        client
+          .from("teams")
+          .select("id", { count: "exact", head: true })
+          .limit(1),
+        client
+          .from("transactions")
+          .select("id", { count: "exact", head: true })
+          .limit(1),
+      ]);
+
+    totalSum = totalSumResult.data ?? 0;
+    businessCount = businessCountResult.count ?? 0;
+    transactionCount = transactionCountResult.count ?? 0;
+  }
 
   return (
     <div className="text-center flex flex-col mt-[120px] md:mt-[280px] mb-[120px] md:mb-[250px] space-y-4 md:space-y-10">

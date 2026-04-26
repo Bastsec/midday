@@ -36,11 +36,14 @@ export const trpc = createTRPCOptionsProxy<AppRouter>({
           } = await supabase.auth.getSession();
 
           const headers: Record<string, string> = {
-            Authorization: `Bearer ${session?.access_token}`,
             "x-user-timezone": await getTimezone(),
             "x-user-locale": await getLocale(),
             "x-user-country": await getCountryCode(),
           };
+
+          if (session?.access_token) {
+            headers.Authorization = `Bearer ${session.access_token}`;
+          }
 
           // Pass force-primary cookie as header to API for replication lag handling
           const forcePrimary = cookieStore.get(Cookies.ForcePrimary);

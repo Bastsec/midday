@@ -236,7 +236,7 @@ export const documentTagEmbeddings = pgTable(
     pgPolicy("Enable insert for authenticated users only", {
       as: "permissive",
       for: "insert",
-      to: ["authenticated"],
+      to: ["public"],
       withCheck: sql`true`,
     }),
   ],
@@ -269,19 +269,19 @@ export const transactionCategoryEmbeddings = pgTable(
     pgPolicy("Enable read access for authenticated users", {
       as: "permissive",
       for: "select",
-      to: ["authenticated"],
+      to: ["public"],
       using: sql`true`,
     }),
     pgPolicy("Enable insert for authenticated users only", {
       as: "permissive",
       for: "insert",
-      to: ["authenticated"],
+      to: ["public"],
       withCheck: sql`true`,
     }),
     pgPolicy("Enable update for authenticated users only", {
       as: "permissive",
       for: "update",
-      to: ["authenticated"],
+      to: ["public"],
       using: sql`true`,
     }),
   ],
@@ -361,14 +361,14 @@ export const transactions = pgTable(
     ),
     index("idx_transactions_team_id_date_name").using(
       "btree",
-      table.teamId.asc().nullsLast().op("date_ops"),
+      table.teamId.asc().nullsLast().op("uuid_ops"),
       table.date.asc().nullsLast().op("date_ops"),
-      table.name.asc().nullsLast().op("uuid_ops"),
+      table.name.asc().nullsLast().op("text_ops"),
     ),
     index("idx_transactions_team_id_name").using(
       "btree",
       table.teamId.asc().nullsLast().op("uuid_ops"),
-      table.name.asc().nullsLast().op("uuid_ops"),
+      table.name.asc().nullsLast().op("text_ops"),
     ),
     index("idx_trgm_name").using(
       "gist",
@@ -390,10 +390,10 @@ export const transactions = pgTable(
       "transactions_team_id_date_currency_bank_account_id_category_idx",
     ).using(
       "btree",
-      table.teamId.asc().nullsLast().op("enum_ops"),
+      table.teamId.asc().nullsLast().op("uuid_ops"),
       table.date.asc().nullsLast().op("date_ops"),
       table.currency.asc().nullsLast().op("text_ops"),
-      table.bankAccountId.asc().nullsLast().op("date_ops"),
+      table.bankAccountId.asc().nullsLast().op("uuid_ops"),
     ),
     index("transactions_team_id_idx").using(
       "btree",
@@ -490,23 +490,23 @@ export const trackerEntries = pgTable(
     pgPolicy("Entries can be created by a member of the team", {
       as: "permissive",
       for: "insert",
-      to: ["authenticated"],
+      to: ["public"],
       withCheck: sql`(team_id IN ( SELECT private.get_teams_for_authenticated_user() AS get_teams_for_authenticated_user))`,
     }),
     pgPolicy("Entries can be deleted by a member of the team", {
       as: "permissive",
       for: "delete",
-      to: ["authenticated"],
+      to: ["public"],
     }),
     pgPolicy("Entries can be selected by a member of the team", {
       as: "permissive",
       for: "select",
-      to: ["authenticated"],
+      to: ["public"],
     }),
     pgPolicy("Entries can be updated by a member of the team", {
       as: "permissive",
       for: "update",
-      to: ["authenticated"],
+      to: ["public"],
     }),
   ],
 );
@@ -1320,7 +1320,7 @@ export const teams = pgTable(
       .notNull(),
     name: text(),
     logoUrl: text("logo_url"),
-    inboxId: text("inbox_id").default("generate_inbox(10)"),
+    inboxId: text("inbox_id").default(sql`generate_inbox(10)`),
     email: text(),
     inboxEmail: text("inbox_email"),
     inboxForwarding: boolean("inbox_forwarding").default(true),
@@ -1342,7 +1342,7 @@ export const teams = pgTable(
     pgPolicy("Enable insert for authenticated users only", {
       as: "permissive",
       for: "insert",
-      to: ["authenticated"],
+      to: ["public"],
       withCheck: sql`true`,
     }),
     pgPolicy("Invited users can select team if they are invited.", {
@@ -1413,7 +1413,7 @@ export const documents = pgTable(
     ),
     index("documents_team_id_parent_id_idx").using(
       "btree",
-      table.teamId.asc().nullsLast().op("text_ops"),
+      table.teamId.asc().nullsLast().op("uuid_ops"),
       table.parentId.asc().nullsLast().op("text_ops"),
     ),
     index("idx_documents_fts_english").using(
@@ -1465,7 +1465,7 @@ export const documents = pgTable(
     pgPolicy("Enable insert for authenticated users only", {
       as: "permissive",
       for: "insert",
-      to: ["authenticated"],
+      to: ["public"],
     }),
   ],
 );
@@ -1708,13 +1708,13 @@ export const transactionEnrichments = pgTable(
     pgPolicy("Enable insert for authenticated users only", {
       as: "permissive",
       for: "insert",
-      to: ["authenticated"],
+      to: ["public"],
       withCheck: sql`true`,
     }),
     pgPolicy("Enable update for authenticated users only", {
       as: "permissive",
       for: "update",
-      to: ["authenticated"],
+      to: ["public"],
     }),
   ],
 );
@@ -1744,11 +1744,6 @@ export const users = pgTable(
       table.teamId.asc().nullsLast().op("uuid_ops"),
     ),
     foreignKey({
-      columns: [table.id],
-      foreignColumns: [table.id],
-      name: "users_id_fkey",
-    }).onDelete("cascade"),
-    foreignKey({
       columns: [table.teamId],
       foreignColumns: [teams.id],
       name: "users_team_id_fkey",
@@ -1767,7 +1762,7 @@ export const users = pgTable(
     pgPolicy("Users can select users if they are in the same team", {
       as: "permissive",
       for: "select",
-      to: ["authenticated"],
+      to: ["public"],
     }),
     pgPolicy("Users can update own profile.", {
       as: "permissive",
@@ -1829,23 +1824,23 @@ export const trackerProjects = pgTable(
     pgPolicy("Projects can be created by a member of the team", {
       as: "permissive",
       for: "insert",
-      to: ["authenticated"],
+      to: ["public"],
       withCheck: sql`(team_id IN ( SELECT private.get_teams_for_authenticated_user() AS get_teams_for_authenticated_user))`,
     }),
     pgPolicy("Projects can be deleted by a member of the team", {
       as: "permissive",
       for: "delete",
-      to: ["authenticated"],
+      to: ["public"],
     }),
     pgPolicy("Projects can be selected by a member of the team", {
       as: "permissive",
       for: "select",
-      to: ["authenticated"],
+      to: ["public"],
     }),
     pgPolicy("Projects can be updated by a member of the team", {
       as: "permissive",
       for: "update",
-      to: ["authenticated"],
+      to: ["public"],
     }),
   ],
 );
@@ -2269,18 +2264,18 @@ export const usersOnTeam = pgTable(
     pgPolicy("Enable insert for authenticated users only", {
       as: "permissive",
       for: "insert",
-      to: ["authenticated"],
+      to: ["public"],
       withCheck: sql`true`,
     }),
     pgPolicy("Enable updates for users on team", {
       as: "permissive",
       for: "update",
-      to: ["authenticated"],
+      to: ["public"],
     }),
     pgPolicy("Select for current user teams", {
       as: "permissive",
       for: "select",
-      to: ["authenticated"],
+      to: ["public"],
     }),
     pgPolicy("Users on team can be deleted by a member of the team", {
       as: "permissive",
@@ -2343,89 +2338,6 @@ export const transactionCategories = pgTable(
   ],
 );
 
-export const usersInAuth = pgTable(
-  "auth.users",
-  {
-    instanceId: uuid("instance_id"),
-    id: uuid("id").notNull(),
-    aud: varchar("aud", { length: 255 }),
-    role: varchar("role", { length: 255 }),
-    email: varchar("email", { length: 255 }),
-    encryptedPassword: varchar("encrypted_password", { length: 255 }),
-    emailConfirmedAt: timestamp("email_confirmed_at", { withTimezone: true }),
-    invitedAt: timestamp("invited_at", { withTimezone: true }),
-    confirmationToken: varchar("confirmation_token", { length: 255 }),
-    confirmationSentAt: timestamp("confirmation_sent_at", {
-      withTimezone: true,
-    }),
-    recoveryToken: varchar("recovery_token", { length: 255 }),
-    recoverySentAt: timestamp("recovery_sent_at", { withTimezone: true }),
-    emailChangeTokenNew: varchar("email_change_token_new", { length: 255 }),
-    emailChange: varchar("email_change", { length: 255 }),
-    emailChangeSentAt: timestamp("email_change_sent_at", {
-      withTimezone: true,
-    }),
-    lastSignInAt: timestamp("last_sign_in_at", { withTimezone: true }),
-    rawAppMetaData: jsonb("raw_app_meta_data"),
-    rawUserMetaData: jsonb("raw_user_meta_data"),
-    isSuperAdmin: boolean("is_super_admin"),
-    createdAt: timestamp("created_at", { withTimezone: true }),
-    updatedAt: timestamp("updated_at", { withTimezone: true }),
-    phone: text("phone").default(sql`null::character varying`),
-    phoneConfirmedAt: timestamp("phone_confirmed_at", { withTimezone: true }),
-    phoneChange: text("phone_change").default(sql`''::character varying`),
-    phoneChangeToken: varchar("phone_change_token", { length: 255 }).default(
-      sql`''::character varying`,
-    ),
-    phoneChangeSentAt: timestamp("phone_change_sent_at", {
-      withTimezone: true,
-    }),
-    // Drizzle ORM does not support .stored() for generated columns, so we omit it
-    confirmedAt: timestamp("confirmed_at", {
-      withTimezone: true,
-      mode: "string",
-    }).generatedAlwaysAs(sql`LEAST(email_confirmed_at, phone_confirmed_at)`),
-    emailChangeTokenCurrent: varchar("email_change_token_current", {
-      length: 255,
-    }).default(sql`''::character varying`),
-    emailChangeConfirmStatus: smallint("email_change_confirm_status").default(
-      0,
-    ),
-    bannedUntil: timestamp("banned_until", { withTimezone: true }),
-    reauthenticationToken: varchar("reauthentication_token", {
-      length: 255,
-    }).default(sql`''::character varying`),
-    reauthenticationSentAt: timestamp("reauthentication_sent_at", {
-      withTimezone: true,
-    }),
-    isSsoUser: boolean("is_sso_user").notNull().default(false),
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    isAnonymous: boolean("is_anonymous").notNull().default(false),
-  },
-  (table) => [
-    primaryKey({ columns: [table.id], name: "users_pkey" }),
-    unique("users_phone_key").on(table.phone),
-    unique("confirmation_token_idx").on(table.confirmationToken),
-    unique("email_change_token_current_idx").on(table.emailChangeTokenCurrent),
-    unique("email_change_token_new_idx").on(table.emailChangeTokenNew),
-    unique("reauthentication_token_idx").on(table.reauthenticationToken),
-    unique("recovery_token_idx").on(table.recoveryToken),
-    unique("users_email_partial_key").on(table.email),
-    index("users_instance_id_email_idx").on(
-      table.instanceId,
-      sql`lower((email)::text)`,
-    ),
-    index("users_instance_id_idx").on(table.instanceId),
-    index("users_is_anonymous_idx").on(table.isAnonymous),
-    // Check constraint for email_change_confirm_status
-    {
-      kind: "check",
-      name: "users_email_change_confirm_status_check",
-      expression: sql`((email_change_confirm_status >= 0) AND (email_change_confirm_status <= 2))`,
-    },
-  ],
-);
-
 export const shortLinks = pgTable(
   "short_links",
   {
@@ -2470,25 +2382,25 @@ export const shortLinks = pgTable(
     pgPolicy("Short links can be created by a member of the team", {
       as: "permissive",
       for: "insert",
-      to: ["authenticated"],
+      to: ["public"],
       withCheck: sql`(team_id IN ( SELECT private.get_teams_for_authenticated_user() AS get_teams_for_authenticated_user))`,
     }),
     pgPolicy("Short links can be selected by a member of the team", {
       as: "permissive",
       for: "select",
-      to: ["authenticated"],
+      to: ["public"],
       using: sql`(team_id IN ( SELECT private.get_teams_for_authenticated_user() AS get_teams_for_authenticated_user))`,
     }),
     pgPolicy("Short links can be updated by a member of the team", {
       as: "permissive",
       for: "update",
-      to: ["authenticated"],
+      to: ["public"],
       using: sql`(team_id IN ( SELECT private.get_teams_for_authenticated_user() AS get_teams_for_authenticated_user))`,
     }),
     pgPolicy("Short links can be deleted by a member of the team", {
       as: "permissive",
       for: "delete",
-      to: ["authenticated"],
+      to: ["public"],
       using: sql`(team_id IN ( SELECT private.get_teams_for_authenticated_user() AS get_teams_for_authenticated_user))`,
     }),
   ],
@@ -2761,10 +2673,6 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   oauthApplications: many(oauthApplications),
   oauthAuthorizationCodes: many(oauthAuthorizationCodes),
   oauthAccessTokens: many(oauthAccessTokens),
-  usersInAuth: one(usersInAuth, {
-    fields: [users.id],
-    references: [usersInAuth.id],
-  }),
   team: one(teams, {
     fields: [users.teamId],
     references: [teams.id],
@@ -3117,10 +3025,6 @@ export const transactionEnrichmentsRelations = relations(
     }),
   }),
 );
-
-export const usersInAuthRelations = relations(usersInAuth, ({ many }) => ({
-  users: many(users),
-}));
 
 export const inboxRelations = relations(inbox, ({ one }) => ({
   transactionAttachment: one(transactionAttachments, {

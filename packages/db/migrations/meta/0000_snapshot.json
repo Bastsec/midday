@@ -1,5 +1,5 @@
 {
-  "id": "ffd83524-3d65-4a77-bb4e-e9ab9a912890",
+  "id": "7bf37a64-0e7a-4ed0-bec5-5a3602cde3bc",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1434,7 +1434,7 @@
           "as": "PERMISSIVE",
           "for": "INSERT",
           "to": [
-            "authenticated"
+            "public"
           ],
           "withCheck": "true"
         }
@@ -1700,7 +1700,7 @@
               "isExpression": false,
               "asc": true,
               "nulls": "last",
-              "opclass": "text_ops"
+              "opclass": "uuid_ops"
             },
             {
               "expression": "parent_id",
@@ -1857,7 +1857,7 @@
           "as": "PERMISSIVE",
           "for": "INSERT",
           "to": [
-            "authenticated"
+            "public"
           ]
         }
       },
@@ -2061,6 +2061,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "sender_email": {
+          "name": "sender_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "display_name": {
           "name": "display_name",
           "type": "text",
@@ -2122,6 +2128,18 @@
         },
         "inbox_account_id": {
           "name": "inbox_account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "invoice_number": {
+          "name": "invoice_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "grouped_inbox_id": {
+          "name": "grouped_inbox_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -2197,6 +2215,38 @@
           "columns": [
             {
               "expression": "inbox_account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "inbox_invoice_number_idx": {
+          "name": "inbox_invoice_number_idx",
+          "columns": [
+            {
+              "expression": "invoice_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "inbox_grouped_inbox_id_idx": {
+          "name": "inbox_grouped_inbox_id_idx",
+          "columns": [
+            {
+              "expression": "grouped_inbox_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last",
@@ -2449,6 +2499,104 @@
           "to": [
             "public"
           ]
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.inbox_blocklist": {
+      "name": "inbox_blocklist",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "team_id": {
+          "name": "team_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "inbox_blocklist_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "inbox_blocklist_team_id_fkey": {
+          "name": "inbox_blocklist_team_id_fkey",
+          "tableFrom": "inbox_blocklist",
+          "tableTo": "teams",
+          "columnsFrom": [
+            "team_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "inbox_blocklist_team_id_type_value_key": {
+          "name": "inbox_blocklist_team_id_type_value_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "team_id",
+            "type",
+            "value"
+          ]
+        }
+      },
+      "policies": {
+        "Inbox blocklist can be deleted by a member of the team": {
+          "name": "Inbox blocklist can be deleted by a member of the team",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "public"
+          ],
+          "using": "(team_id IN ( SELECT private.get_teams_for_authenticated_user() AS get_teams_for_authenticated_user))"
+        },
+        "Inbox blocklist can be inserted by a member of the team": {
+          "name": "Inbox blocklist can be inserted by a member of the team",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "public"
+          ],
+          "withCheck": "(team_id IN ( SELECT private.get_teams_for_authenticated_user() AS get_teams_for_authenticated_user))"
+        },
+        "Inbox blocklist can be selected by a member of the team": {
+          "name": "Inbox blocklist can be selected by a member of the team",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "public"
+          ],
+          "using": "(team_id IN ( SELECT private.get_teams_for_authenticated_user() AS get_teams_for_authenticated_user))"
         }
       },
       "checkConstraints": {},
@@ -4695,7 +4843,7 @@
           "as": "PERMISSIVE",
           "for": "INSERT",
           "to": [
-            "authenticated"
+            "public"
           ],
           "withCheck": "(team_id IN ( SELECT private.get_teams_for_authenticated_user() AS get_teams_for_authenticated_user))"
         },
@@ -4704,7 +4852,7 @@
           "as": "PERMISSIVE",
           "for": "SELECT",
           "to": [
-            "authenticated"
+            "public"
           ],
           "using": "(team_id IN ( SELECT private.get_teams_for_authenticated_user() AS get_teams_for_authenticated_user))"
         },
@@ -4713,7 +4861,7 @@
           "as": "PERMISSIVE",
           "for": "UPDATE",
           "to": [
-            "authenticated"
+            "public"
           ],
           "using": "(team_id IN ( SELECT private.get_teams_for_authenticated_user() AS get_teams_for_authenticated_user))"
         },
@@ -4722,7 +4870,7 @@
           "as": "PERMISSIVE",
           "for": "DELETE",
           "to": [
-            "authenticated"
+            "public"
           ],
           "using": "(team_id IN ( SELECT private.get_teams_for_authenticated_user() AS get_teams_for_authenticated_user))"
         }
@@ -4854,7 +5002,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false,
-          "default": "'generate_inbox(10)'"
+          "default": "generate_inbox(10)"
         },
         "email": {
           "name": "email",
@@ -4884,6 +5032,12 @@
         "country_code": {
           "name": "country_code",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fiscal_year_start_month": {
+          "name": "fiscal_year_start_month",
+          "type": "smallint",
           "primaryKey": false,
           "notNull": false
         },
@@ -4939,7 +5093,7 @@
           "as": "PERMISSIVE",
           "for": "INSERT",
           "to": [
-            "authenticated"
+            "public"
           ],
           "withCheck": "true"
         },
@@ -5133,7 +5287,7 @@
           "as": "PERMISSIVE",
           "for": "INSERT",
           "to": [
-            "authenticated"
+            "public"
           ],
           "withCheck": "(team_id IN ( SELECT private.get_teams_for_authenticated_user() AS get_teams_for_authenticated_user))"
         },
@@ -5142,7 +5296,7 @@
           "as": "PERMISSIVE",
           "for": "DELETE",
           "to": [
-            "authenticated"
+            "public"
           ]
         },
         "Entries can be selected by a member of the team": {
@@ -5150,7 +5304,7 @@
           "as": "PERMISSIVE",
           "for": "SELECT",
           "to": [
-            "authenticated"
+            "public"
           ]
         },
         "Entries can be updated by a member of the team": {
@@ -5158,7 +5312,7 @@
           "as": "PERMISSIVE",
           "for": "UPDATE",
           "to": [
-            "authenticated"
+            "public"
           ]
         }
       },
@@ -5472,7 +5626,7 @@
           "as": "PERMISSIVE",
           "for": "INSERT",
           "to": [
-            "authenticated"
+            "public"
           ],
           "withCheck": "(team_id IN ( SELECT private.get_teams_for_authenticated_user() AS get_teams_for_authenticated_user))"
         },
@@ -5481,7 +5635,7 @@
           "as": "PERMISSIVE",
           "for": "DELETE",
           "to": [
-            "authenticated"
+            "public"
           ]
         },
         "Projects can be selected by a member of the team": {
@@ -5489,7 +5643,7 @@
           "as": "PERMISSIVE",
           "for": "SELECT",
           "to": [
-            "authenticated"
+            "public"
           ]
         },
         "Projects can be updated by a member of the team": {
@@ -5497,7 +5651,7 @@
           "as": "PERMISSIVE",
           "for": "UPDATE",
           "to": [
-            "authenticated"
+            "public"
           ]
         }
       },
@@ -6060,7 +6214,7 @@
           "as": "PERMISSIVE",
           "for": "SELECT",
           "to": [
-            "authenticated"
+            "public"
           ],
           "using": "true"
         },
@@ -6069,7 +6223,7 @@
           "as": "PERMISSIVE",
           "for": "INSERT",
           "to": [
-            "authenticated"
+            "public"
           ],
           "withCheck": "true"
         },
@@ -6078,7 +6232,7 @@
           "as": "PERMISSIVE",
           "for": "UPDATE",
           "to": [
-            "authenticated"
+            "public"
           ],
           "using": "true"
         }
@@ -6344,7 +6498,7 @@
           "as": "PERMISSIVE",
           "for": "INSERT",
           "to": [
-            "authenticated"
+            "public"
           ],
           "withCheck": "true"
         },
@@ -6353,7 +6507,7 @@
           "as": "PERMISSIVE",
           "for": "UPDATE",
           "to": [
-            "authenticated"
+            "public"
           ]
         }
       },
@@ -6968,8 +7122,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "taxRate": {
-          "name": "taxRate",
+        "tax_rate": {
+          "name": "tax_rate",
           "type": "numeric(10, 2)",
           "primaryKey": false,
           "notNull": false
@@ -7122,7 +7276,7 @@
               "isExpression": false,
               "asc": true,
               "nulls": "last",
-              "opclass": "date_ops"
+              "opclass": "uuid_ops"
             },
             {
               "expression": "date",
@@ -7136,7 +7290,7 @@
               "isExpression": false,
               "asc": true,
               "nulls": "last",
-              "opclass": "uuid_ops"
+              "opclass": "text_ops"
             }
           ],
           "isUnique": false,
@@ -7159,7 +7313,7 @@
               "isExpression": false,
               "asc": true,
               "nulls": "last",
-              "opclass": "uuid_ops"
+              "opclass": "text_ops"
             }
           ],
           "isUnique": false,
@@ -7239,7 +7393,7 @@
               "isExpression": false,
               "asc": true,
               "nulls": "last",
-              "opclass": "enum_ops"
+              "opclass": "uuid_ops"
             },
             {
               "expression": "date",
@@ -7260,7 +7414,7 @@
               "isExpression": false,
               "asc": true,
               "nulls": "last",
-              "opclass": "date_ops"
+              "opclass": "uuid_ops"
             }
           ],
           "isUnique": false,
@@ -7659,19 +7813,6 @@
         }
       },
       "foreignKeys": {
-        "users_id_fkey": {
-          "name": "users_id_fkey",
-          "tableFrom": "users",
-          "tableTo": "users",
-          "columnsFrom": [
-            "id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
         "users_team_id_fkey": {
           "name": "users_team_id_fkey",
           "tableFrom": "users",
@@ -7711,7 +7852,7 @@
           "as": "PERMISSIVE",
           "for": "SELECT",
           "to": [
-            "authenticated"
+            "public"
           ]
         },
         "Users can update own profile.": {
@@ -7723,350 +7864,6 @@
           ]
         }
       },
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.auth.users": {
-      "name": "auth.users",
-      "schema": "",
-      "columns": {
-        "instance_id": {
-          "name": "instance_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "aud": {
-          "name": "aud",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "role": {
-          "name": "role",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "email": {
-          "name": "email",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "encrypted_password": {
-          "name": "encrypted_password",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "email_confirmed_at": {
-          "name": "email_confirmed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "invited_at": {
-          "name": "invited_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "confirmation_token": {
-          "name": "confirmation_token",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "confirmation_sent_at": {
-          "name": "confirmation_sent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "recovery_token": {
-          "name": "recovery_token",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "recovery_sent_at": {
-          "name": "recovery_sent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "email_change_token_new": {
-          "name": "email_change_token_new",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "email_change": {
-          "name": "email_change",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "email_change_sent_at": {
-          "name": "email_change_sent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_sign_in_at": {
-          "name": "last_sign_in_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "raw_app_meta_data": {
-          "name": "raw_app_meta_data",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "raw_user_meta_data": {
-          "name": "raw_user_meta_data",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_super_admin": {
-          "name": "is_super_admin",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "phone": {
-          "name": "phone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "null::character varying"
-        },
-        "phone_confirmed_at": {
-          "name": "phone_confirmed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "phone_change": {
-          "name": "phone_change",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "''::character varying"
-        },
-        "phone_change_token": {
-          "name": "phone_change_token",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "''::character varying"
-        },
-        "phone_change_sent_at": {
-          "name": "phone_change_sent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "confirmed_at": {
-          "name": "confirmed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false,
-          "generated": {
-            "as": "LEAST(email_confirmed_at, phone_confirmed_at)",
-            "type": "stored"
-          }
-        },
-        "email_change_token_current": {
-          "name": "email_change_token_current",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "''::character varying"
-        },
-        "email_change_confirm_status": {
-          "name": "email_change_confirm_status",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 0
-        },
-        "banned_until": {
-          "name": "banned_until",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reauthentication_token": {
-          "name": "reauthentication_token",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "''::character varying"
-        },
-        "reauthentication_sent_at": {
-          "name": "reauthentication_sent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_sso_user": {
-          "name": "is_sso_user",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_anonymous": {
-          "name": "is_anonymous",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        }
-      },
-      "indexes": {
-        "users_instance_id_email_idx": {
-          "name": "users_instance_id_email_idx",
-          "columns": [
-            {
-              "expression": "instance_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "lower((email)::text)",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "users_instance_id_idx": {
-          "name": "users_instance_id_idx",
-          "columns": [
-            {
-              "expression": "instance_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "users_is_anonymous_idx": {
-          "name": "users_is_anonymous_idx",
-          "columns": [
-            {
-              "expression": "is_anonymous",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "users_pkey": {
-          "name": "users_pkey",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "users_phone_key": {
-          "name": "users_phone_key",
-          "nullsNotDistinct": false,
-          "columns": [
-            "phone"
-          ]
-        },
-        "confirmation_token_idx": {
-          "name": "confirmation_token_idx",
-          "nullsNotDistinct": false,
-          "columns": [
-            "confirmation_token"
-          ]
-        },
-        "email_change_token_current_idx": {
-          "name": "email_change_token_current_idx",
-          "nullsNotDistinct": false,
-          "columns": [
-            "email_change_token_current"
-          ]
-        },
-        "email_change_token_new_idx": {
-          "name": "email_change_token_new_idx",
-          "nullsNotDistinct": false,
-          "columns": [
-            "email_change_token_new"
-          ]
-        },
-        "reauthentication_token_idx": {
-          "name": "reauthentication_token_idx",
-          "nullsNotDistinct": false,
-          "columns": [
-            "reauthentication_token"
-          ]
-        },
-        "recovery_token_idx": {
-          "name": "recovery_token_idx",
-          "nullsNotDistinct": false,
-          "columns": [
-            "recovery_token"
-          ]
-        },
-        "users_email_partial_key": {
-          "name": "users_email_partial_key",
-          "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
-        }
-      },
-      "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
     },
@@ -8187,7 +7984,7 @@
           "as": "PERMISSIVE",
           "for": "INSERT",
           "to": [
-            "authenticated"
+            "public"
           ],
           "withCheck": "true"
         },
@@ -8196,7 +7993,7 @@
           "as": "PERMISSIVE",
           "for": "UPDATE",
           "to": [
-            "authenticated"
+            "public"
           ]
         },
         "Select for current user teams": {
@@ -8204,7 +8001,7 @@
           "as": "PERMISSIVE",
           "for": "SELECT",
           "to": [
-            "authenticated"
+            "public"
           ]
         },
         "Users on team can be deleted by a member of the team": {
@@ -8314,8 +8111,7 @@
       "name": "inbox_account_providers",
       "schema": "public",
       "values": [
-        "gmail",
-        "outlook"
+        "gmail"
       ]
     },
     "public.inbox_account_status": {
@@ -8324,6 +8120,14 @@
       "values": [
         "connected",
         "disconnected"
+      ]
+    },
+    "public.inbox_blocklist_type": {
+      "name": "inbox_blocklist_type",
+      "schema": "public",
+      "values": [
+        "email",
+        "domain"
       ]
     },
     "public.inbox_status": {
@@ -8394,7 +8198,11 @@
         "profit",
         "revenue",
         "burn_rate",
-        "expense"
+        "expense",
+        "monthly_revenue",
+        "revenue_forecast",
+        "runway",
+        "category_expenses"
       ]
     },
     "public.subscription_status": {

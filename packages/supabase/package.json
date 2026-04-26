@@ -24,6 +24,8 @@
   "exports": {
     "./server": "./src/client/server.ts",
     "./client": "./src/client/client.ts",
+    "./config": "./src/config.ts",
+    "./unavailable": "./src/client/unavailable.ts",
     "./client-query": "./src/queries/client.ts",
     "./job": "./src/client/job.ts",
     "./mutations": "./src/mutations/index.ts",

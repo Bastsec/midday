@@ -11,33 +11,46 @@ const connectionConfig = {
   connectionTimeoutMillis: 15000,
   maxUses: isDevelopment ? 100 : 0,
   allowExitOnIdle: true,
+  options: "-c search_path=public,extensions",
 };
+
+const replicaConnectionStrings = {
+  fra: process.env.DATABASE_FRA_URL,
+  iad: process.env.DATABASE_IAD_URL,
+  sjc: process.env.DATABASE_SJC_URL,
+};
+
+const hasReplicas = Boolean(
+  replicaConnectionStrings.fra &&
+    replicaConnectionStrings.iad &&
+    replicaConnectionStrings.sjc,
+);
 
 const primaryPool = new Pool({
   connectionString: process.env.DATABASE_PRIMARY_URL!,
   ...connectionConfig,
 });
 
-const fraPool = new Pool({
-  connectionString: process.env.DATABASE_FRA_URL!,
-  ...connectionConfig,
-});
+const fraPool = hasReplicas
+  ? new Pool({
+      connectionString: replicaConnectionStrings.fra!,
+      ...connectionConfig,
+    })
+  : null;
 
-const sjcPool = new Pool({
-  connectionString: process.env.DATABASE_SJC_URL!,
-  ...connectionConfig,
-});
+const iadPool = hasReplicas
+  ? new Pool({
+      connectionString: replicaConnectionStrings.iad!,
+      ...connectionConfig,
+    })
+  : null;
 
-const iadPool = new Pool({
-  connectionString: process.env.DATABASE_IAD_URL!,
-  ...connectionConfig,
-});
-
-const hasReplicas = Boolean(
-  process.env.DATABASE_FRA_URL &&
-    process.env.DATABASE_SJC_URL &&
-    process.env.DATABASE_IAD_URL,
-);
+const sjcPool = hasReplicas
+  ? new Pool({
+      connectionString: replicaConnectionStrings.sjc!,
+      ...connectionConfig,
+    })
+  : null;
 
 // Connection pool monitoring function
 export const getConnectionPoolStats = () => {
@@ -70,10 +83,10 @@ export const getConnectionPoolStats = () => {
   };
 
   // Only add replica pools if they're configured
-  if (hasReplicas) {
+  if (hasReplicas && fraPool && iadPool && sjcPool) {
     pools.fra = getPoolStats(fraPool, "fra");
-    pools.sjc = getPoolStats(sjcPool, "sjc");
     pools.iad = getPoolStats(iadPool, "iad");
+    pools.sjc = getPoolStats(sjcPool, "sjc");
   }
 
   const poolArray = Object.values(pools);
@@ -110,10 +123,13 @@ export const getConnectionPoolStats = () => {
   };
 };
 
-export const primaryDb = drizzle(primaryPool, {
-  schema,
-  casing: "snake_case",
-});
+const createDb = (pool: Pool) =>
+  drizzle(pool, {
+    schema,
+    casing: "snake_case",
+  });
+
+export const primaryDb = createDb(primaryPool);
 
 const getReplicaIndexForRegion = () => {
   switch (process.env.FLY_REGION) {
@@ -128,26 +144,20 @@ const getReplicaIndexForRegion = () => {
   }
 };
 
-// Create the database instance once and export it
-const replicaIndex = getReplicaIndexForRegion();
+const replicaIndex = hasReplicas ? getReplicaIndexForRegion() : 0;
+
+const replicaDbs =
+  hasReplicas && fraPool && iadPool && sjcPool
+    ? ([createDb(fraPool), createDb(iadPool), createDb(sjcPool)] as [
+        typeof primaryDb,
+        typeof primaryDb,
+        typeof primaryDb,
+      ])
+    : ([primaryDb] as [typeof primaryDb]);
 
 export const db = withReplicas(
   primaryDb,
-  [
-    // Order of replicas is important
-    drizzle(fraPool, {
-      schema,
-      casing: "snake_case",
-    }),
-    drizzle(iadPool, {
-      schema,
-      casing: "snake_case",
-    }),
-    drizzle(sjcPool, {
-      schema,
-      casing: "snake_case",
-    }),
-  ],
+  replicaDbs,
   (replicas) => replicas[replicaIndex]!,
 );
 
