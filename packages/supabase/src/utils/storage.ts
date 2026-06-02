@@ -18,15 +18,19 @@ function getS3Client() {
   const endpoint =
     process.env.MINIO_ENDPOINT ||
     process.env.S3_ENDPOINT ||
-    process.env.NEXT_PUBLIC_MINIO_ENDPOINT;
+    process.env.NEXT_PUBLIC_MINIO_ENDPOINT ||
+    process.env.NEXT_PUBLIC_MINIO_URL ||
+    process.env.MINIO_PUBLIC_URL;
   const accessKeyId =
     process.env.MINIO_ACCESS_KEY ||
     process.env.S3_ACCESS_KEY_ID ||
-    process.env.NEXT_PUBLIC_MINIO_ACCESS_KEY;
+    process.env.NEXT_PUBLIC_MINIO_ACCESS_KEY ||
+    process.env.MINIO_ROOT_USER;
   const secretAccessKey =
     process.env.MINIO_SECRET_KEY ||
     process.env.S3_SECRET_ACCESS_KEY ||
-    process.env.NEXT_PUBLIC_MINIO_SECRET_KEY;
+    process.env.NEXT_PUBLIC_MINIO_SECRET_KEY ||
+    process.env.MINIO_ROOT_PASSWORD;
   const region =
     process.env.MINIO_REGION || process.env.S3_REGION || "us-east-1";
 
@@ -64,7 +68,7 @@ export async function upload(
     const key = path.join("/");
 
     let body: any;
-    if (typeof window === "undefined") {
+    if (typeof (globalThis as any).window === "undefined") {
       // Server-side: convert file to Buffer
       body = Buffer.from(await file.arrayBuffer());
     } else {

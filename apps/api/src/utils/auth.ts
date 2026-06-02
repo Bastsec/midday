@@ -23,9 +23,10 @@ export async function verifyAccessToken(
   if (!accessToken) return null;
 
   try {
+    const jwtSecret = process.env.SUPABASE_JWT_SECRET || process.env.AUTH_JWT_SECRET;
     const { payload } = await jwtVerify(
       accessToken,
-      new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET),
+      new TextEncoder().encode(jwtSecret),
     );
 
     const supabasePayload = payload as SupabaseJWTPayload;
