@@ -1,5 +1,7 @@
 import { createClient } from "@midday/supabase/client";
 import { upload } from "@midday/supabase/storage";
+import { isSupabaseConfigured } from "@midday/supabase/config";
+import { uploadFileAction } from "@/actions/upload-file-action";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useState } from "react";
 
@@ -26,11 +28,19 @@ export function useUpload() {
     setLoading(true);
 
     try {
-      const url = await upload(supabase, {
-        path,
-        file,
-        bucket,
-      });
+      let url: string;
+
+      if (!isSupabaseConfigured()) {
+        const formData = new FormData();
+        formData.append("file", file);
+        url = await uploadFileAction(formData, bucket, path);
+      } else {
+        url = await upload(supabase, {
+          path,
+          file,
+          bucket,
+        });
+      }
 
       return {
         url,

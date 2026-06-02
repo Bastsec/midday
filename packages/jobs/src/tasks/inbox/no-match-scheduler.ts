@@ -100,25 +100,29 @@ export const noMatchScheduler = schedules.task({
       // 1. In "pending" status (waiting for matches)
       // 2. Created more than 90 days ago
       // 3. Not already matched to a transaction
-      const result = await db
-        .update(inbox)
-        .set({
-          status: "no_match",
-        })
-        .where(
-          and(
-            eq(inbox.status, "pending"),
-            lt(inbox.createdAt, ninetyDaysAgo.toISOString()),
-            // Make sure they're not already matched
-            sql`${inbox.transactionId} IS NULL`,
-          ),
-        )
-        .returning({
-          id: inbox.id,
-          teamId: inbox.teamId,
-          displayName: inbox.displayName,
-          createdAt: inbox.createdAt,
-        });
+      const result = await db.transaction(async (tx) => {
+        await tx.execute(sql`SET LOCAL search_path = public, extensions`);
+
+        return tx
+          .update(inbox)
+          .set({
+            status: "no_match",
+          })
+          .where(
+            and(
+              eq(inbox.status, "pending"),
+              lt(inbox.createdAt, ninetyDaysAgo.toISOString()),
+              // Make sure they're not already matched
+              sql`${inbox.transactionId} IS NULL`,
+            ),
+          )
+          .returning({
+            id: inbox.id,
+            teamId: inbox.teamId,
+            displayName: inbox.displayName,
+            createdAt: inbox.createdAt,
+          });
+      });
 
       logger.info("No-match scheduler completed", {
         updatedCount: result.length,

@@ -2,6 +2,9 @@ import { stripSpecialCharacters } from "@midday/utils";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import * as tus from "tus-js-client";
 
+import { isSupabaseConfigured } from "@midday/supabase/config";
+import { uploadFileAction } from "@/actions/upload-file-action";
+
 type ResumableUploadParmas = {
   file: File;
   path: string[];
@@ -13,11 +16,25 @@ export async function resumableUpload(
   client: SupabaseClient,
   { file, path, bucket, onProgress }: ResumableUploadParmas,
 ) {
+  const filename = stripSpecialCharacters(file.name);
+
+  if (!isSupabaseConfigured()) {
+    const formData = new FormData();
+    formData.append("file", file);
+    await uploadFileAction(formData, bucket, path);
+
+    // Call progress callback to signal completion immediately
+    onProgress?.(file.size, file.size);
+
+    return {
+      filename,
+      file,
+    };
+  }
+
   const {
     data: { session },
   } = await client.auth.getSession();
-
-  const filename = stripSpecialCharacters(file.name);
 
   const fullPath = decodeURIComponent([...path, filename].join("/"));
 
